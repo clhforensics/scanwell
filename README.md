@@ -16,9 +16,19 @@ Cross-platform sensitive data scanner for local host devices. Detects PII, PHI, 
 
 ```bash
 python3 -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
+# macOS/Linux:
+source venv/bin/activate
+# Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+
 pip install -r requirements.txt
 ```
+
+### Platform Notes
+
+- **macOS**: Works out of the box. libmagic is installed via Homebrew if you want MIME sniffing, but extension-based fallback works fine without it.
+- **Linux**: Works out of the box on most distros. Install `libmagic1` (Debian/Ubuntu) or `file-libs` (Alpine) for MIME sniffing.
+- **Windows**: `python-magic` is optional. The scanner falls back to extension-based MIME detection if libmagic isn't installed. For MIME sniffing, install [libmagic](https://github.com/julian-r/python-magic#dependencies) and ensure `magic.dll` is on your PATH.
 
 ## Usage
 

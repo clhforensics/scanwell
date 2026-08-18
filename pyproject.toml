@@ -12,7 +12,7 @@ version = "2.0.0"
 description = "Cross-platform sensitive data scanner for local host devices"
 requires-python = ">=3.9"
 dependencies = [
-    "python-magic>=0.4.27",
+    "python-magic>=0.4.27; platform_system != 'Windows'",
     "python-docx>=1.0.0",
     "pdfplumber>=0.10.0",
     "openpyxl>=3.1.0",

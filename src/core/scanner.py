@@ -15,7 +15,52 @@ from pathlib import Path
 from typing import Optional
 
 # File content extraction
-import magic
+# Optional python-magic for MIME detection; falls back to extension-based detection
+# if libmagic is not installed (common on Windows where libmagic needs manual install).
+try:
+    import magic
+    _magic_instance = magic.Magic(mime=True)
+
+    def detect_mime_type(file_path: str) -> str:
+        """Detect MIME type via libmagic."""
+        try:
+            return _magic_instance.from_file(file_path)
+        except Exception:
+            return _detect_mime_by_extension(file_path)
+
+    MAGIC_AVAILABLE = True
+except (ImportError, OSError):
+    MAGIC_AVAILABLE = False
+
+    def detect_mime_type(file_path: str) -> str:
+        """Detect MIME type by file extension (fallback when libmagic unavailable)."""
+        return _detect_mime_by_extension(file_path)
+
+# Extension to MIME-type mapping for the fallback path
+_EXT_TO_MIME = {
+    '.txt': 'text/plain', '.csv': 'text/csv', '.log': 'text/plain',
+    '.json': 'application/json', '.xml': 'application/xml',
+    '.yaml': 'text/yaml', '.yml': 'text/yaml', '.ini': 'text/plain',
+    '.cfg': 'text/plain', '.conf': 'text/plain',
+    '.py': 'text/x-python', '.java': 'text/x-java', '.c': 'text/x-c',
+    '.cpp': 'text/x-c++', '.h': 'text/x-c', '.go': 'text/x-go',
+    '.rs': 'text/x-rust', '.rb': 'text/x-ruby', '.js': 'text/javascript',
+    '.ts': 'text/typescript', '.sh': 'text/x-shellscript',
+    '.bat': 'text/plain', '.ps1': 'text/plain', '.sql': 'text/x-sql',
+    '.md': 'text/markdown',
+    '.pdf': 'application/pdf',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.doc': 'application/msword',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.xls': 'application/vnd.ms-excel',
+}
+
+
+def _detect_mime_by_extension(file_path: str) -> str:
+    """Return MIME type based on file extension."""
+    ext = Path(file_path).suffix.lower()
+    return _EXT_TO_MIME.get(ext, 'application/octet-stream')
+
 import docx
 import pdfplumber
 from openpyxl import load_workbook
@@ -118,10 +163,9 @@ class SensitiveDataScanner:
                  use_yara: bool = True):
         self.max_file_size = max_file_size
         self.current_file = None
-        self._magic = magic.Magic(mime=True)
         self.rules = None
         self._use_yara = use_yara and YARA_AVAILABLE
-        
+
         if self._use_yara and yara_rules_dir:
             self._load_yara_rules(yara_rules_dir)
         elif self._use_yara and not yara_rules_dir:
@@ -181,7 +225,7 @@ class SensitiveDataScanner:
             if file_size == 0:
                 return None
             
-            mime = self._magic.from_file(file_path)
+            mime = detect_mime_type(file_path)
             content = self._extract_content(file_path, mime)
             if not content:
                 return None

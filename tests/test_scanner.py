@@ -5,11 +5,15 @@ Tests for the rebuilt scanner, config, and report generator.
 """
 
 import json
+import os
 import pytest
 import tempfile
 from pathlib import Path
 
-from src.core.scanner import SensitiveDataScanner, luhn_check, mask_sensitive
+from src.core.scanner import (
+    SensitiveDataScanner, luhn_check, mask_sensitive,
+    detect_mime_type, _detect_mime_by_extension, MAGIC_AVAILABLE
+)
 from src.core.config_manager import ConfigManager
 from src.utils.report_generator import ReportGenerator
 
@@ -171,3 +175,31 @@ class TestReportGenerator:
             path = gen.generate_report({}, "txt")
             assert path is not None
             assert "No sensitive data found" in path.read_text()
+
+
+class TestMimeDetection:
+    """Test MIME detection works with or without libmagic."""
+
+    def test_extension_fallback_known_types(self):
+        """Verify extension-based detection returns correct MIME types."""
+        assert _detect_mime_by_extension("/tmp/test.pdf") == "application/pdf"
+        assert _detect_mime_by_extension("/tmp/test.docx") == \
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        assert _detect_mime_by_extension("/tmp/test.txt") == "text/plain"
+        assert _detect_mime_by_extension("/tmp/test.py") == "text/x-python"
+
+    def test_extension_fallback_unknown_type(self):
+        """Unknown extensions should return generic octet-stream."""
+        assert _detect_mime_by_extension("/tmp/test.unknownext") == "application/octet-stream"
+
+    def test_detect_mime_type_uses_extension(self):
+        """The public detect_mime_type function should always work, even without libmagic."""
+        # Even if MAGIC_AVAILABLE is False, this should work via extension
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as f:
+            f.write(b"%PDF-1.4 fake")
+            path = f.name
+        try:
+            mime = detect_mime_type(path)
+            assert "pdf" in mime.lower()
+        finally:
+            os.unlink(path)
