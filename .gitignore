@@ -1,0 +1,11 @@
+venv/
+venv_mac/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+*.egg-info/
+*.log
+scanwell_results.json
+.DS_Store
